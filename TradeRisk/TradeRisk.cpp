@@ -3,6 +3,8 @@
 
 #include "stdafx.h"
 #include "TradeRisk.h"
+#include "trading.h"
+#include <sstream>
 
 #define MAX_LOADSTRING 100
 
@@ -10,6 +12,10 @@
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+rwt::price_ladder ladder;						// hold trade info
+int avg_char_width;								// from metrics
+int char_height;								// from metrics
+
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -97,7 +103,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW|WS_VSCROLL,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
@@ -109,6 +115,72 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    UpdateWindow(hWnd);
 
    return TRUE;
+}
+
+COLORREF background_for_r (double r)
+{
+	COLORREF ans;
+	if (r < -1.0) { ans = RGB (128, 64, 50); }
+	else if (r < 0) { ans = RGB (221, 126, 107); }
+	else if (r < 0.5) { ans = RGB (255, 229, 153); }
+	else if (r < 2) { ans = RGB (217, 234, 211); }
+	else if (r < 4) { ans = RGB (182, 215, 168); }
+	else if (r < 6) { ans = RGB (147, 196, 125); }
+	else if (r < 8) { ans = RGB (106, 168, 79); }
+	else { ans = RGB (68, 145, 35); }
+	return ans;
+}
+
+void paint_ladder (HWND hWnd)
+{
+	PAINTSTRUCT ps;
+	rwt::price_description pd;
+	wchar_t buffer[20];
+	int bufflen;
+
+	HDC hdc = BeginPaint (hWnd, &ps);
+	int idxEnd = ladder.steps ();
+	SetTextAlign (hdc, TA_RIGHT | TA_TOP);
+	const int line_width = 35 * avg_char_width;
+
+	for (int i = 0; i < idxEnd; ++i)
+	{
+		int y = i * (char_height + 1);
+		ladder.describe (i, pd);
+		COLORREF bkc = background_for_r (pd.risk_multiple);
+		SetBkColor (hdc, bkc);
+		HBRUSH bkbrush = CreateSolidBrush (bkc);
+		RECT line_rect{ 0, y, line_width, y+char_height };		
+		FillRect (hdc, &line_rect, bkbrush);
+		DeleteObject (bkbrush);
+
+		// print the size, if there is one...
+		if (pd.shares != 0)
+		{
+			swprintf (buffer, 20, L"%2d", pd.shares);
+			bufflen = lstrlen (buffer);
+			TextOut (hdc, 5 * avg_char_width, y, buffer, bufflen);
+		}
+
+		// print the price level...
+		swprintf (buffer, 20, L"%5.2f", pd.price);
+		bufflen = lstrlen (buffer);
+		TextOut (hdc, 15 * avg_char_width, y, buffer, bufflen);
+
+		// print the PnL
+		swprintf (buffer, 20, L"%5.2f", pd.profit);
+		bufflen = lstrlen (buffer);
+		TextOut (hdc, 25 * avg_char_width, y, buffer, bufflen);
+		
+		// print the R-value
+		swprintf (buffer, 20, L"%5.1f", pd.risk_multiple);
+		bufflen = lstrlen (buffer);
+		TextOut (hdc, 35 * avg_char_width, y, buffer, bufflen);
+
+		MoveToEx (hdc, 0, y + char_height, nullptr);
+		LineTo (hdc, line_width, y + char_height);
+	}
+	EndPaint (hWnd, &ps);
 }
 
 //
@@ -142,13 +214,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+	case WM_CREATE:
+		{
+			TEXTMETRIC tm;
+			HDC hdc = GetDC (hWnd);
+			GetTextMetrics (hdc, &tm);
+			avg_char_width = tm.tmAveCharWidth;
+			char_height = tm.tmExternalLeading + tm.tmHeight;
+			ReleaseDC (hWnd, hdc);
+		}
+		break;
     case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            EndPaint(hWnd, &ps);
-        }
+		paint_ladder (hWnd);
         break;
     case WM_DESTROY:
         PostQuitMessage(0);

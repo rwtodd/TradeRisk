@@ -4,24 +4,24 @@
 #include "stdafx.h"
 #include "TradeRisk.h"
 #include "trading.h"
-#include <sstream>
 
 #define MAX_LOADSTRING 100
 
 // Global Variables:
-HINSTANCE hInst;                                // current instance
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-rwt::price_ladder ladder;						// hold trade info
-int avg_char_width;								// from metrics
-int char_height;								// from metrics
-
+static HINSTANCE hInst;                                // current instance
+static WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
+static WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+static rwt::price_ladder ladder;						// hold trade info
+static int avg_char_width;								// from metrics
+static int char_height;								// from metrics
+#define line_height (char_height + 1)
+static int screen_height;
 
 // Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass (HINSTANCE hInstance);
-BOOL                InitInstance (HINSTANCE, int);
-LRESULT CALLBACK    WndProc (HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About (HWND, UINT, WPARAM, LPARAM);
+static ATOM                MyRegisterClass (HINSTANCE hInstance);
+static BOOL                InitInstance (HINSTANCE, int);
+static LRESULT CALLBACK    WndProc (HWND, UINT, WPARAM, LPARAM);
+static INT_PTR CALLBACK    About (HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain (_In_ HINSTANCE hInstance,
 					   _In_opt_ HINSTANCE hPrevInstance,
@@ -68,7 +68,7 @@ int APIENTRY wWinMain (_In_ HINSTANCE hInstance,
 //
 //  PURPOSE: Registers the window class.
 //
-ATOM MyRegisterClass (HINSTANCE hInstance)
+static ATOM MyRegisterClass (HINSTANCE hInstance)
 {
 	WNDCLASSEXW wcex;
 
@@ -99,7 +99,7 @@ ATOM MyRegisterClass (HINSTANCE hInstance)
 //        In this function, we save the instance handle in a global variable and
 //        create and display the main program window.
 //
-BOOL InitInstance (HINSTANCE hInstance, int nCmdShow)
+static BOOL InitInstance (HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
 
@@ -117,7 +117,7 @@ BOOL InitInstance (HINSTANCE hInstance, int nCmdShow)
 	return TRUE;
 }
 
-COLORREF background_for_r (double r)
+static COLORREF background_for_r (double r)
 {
 	COLORREF ans;
 	if (r < -1.0) { ans = RGB (128, 64, 50); }
@@ -156,7 +156,20 @@ public:
 	HBRUSH operator*() { return brush; }
 };
 
-void paint_ladder (HWND hWnd)
+// resets the scrollbar info when the window size or the
+// number of lines changes...
+static void set_scrollinfo (HWND hWnd)
+{
+	SCROLLINFO si;
+	si.cbSize = sizeof (si);
+	si.fMask = SIF_RANGE | SIF_PAGE;
+	si.nMin = 0;
+	si.nMax = ladder.steps() - 1;
+	si.nPage = screen_height / line_height;
+	SetScrollInfo (hWnd, SB_VERT, &si, TRUE);
+}
+
+static void paint_ladder (HWND hWnd)
 {
 	PAINTSTRUCT ps;
 	rwt::price_description pd;
@@ -164,16 +177,23 @@ void paint_ladder (HWND hWnd)
 	int bufflen;
 	const int line_width = 35 * avg_char_width;
 
+	SCROLLINFO si;
+	si.cbSize = sizeof (si);
+	si.fMask = SIF_POS;
+	GetScrollInfo (hWnd, SB_VERT, &si);
+
 	HDC hdc = BeginPaint (hWnd, &ps);
 	{
-		int idxEnd = ladder.steps ();
+		const int first_line = max (0, si.nPos + ps.rcPaint.top / line_height);
+		const int last_line = min (ladder.steps () - 1, si.nPos + ps.rcPaint.bottom / line_height);
+
 		SetTextAlign (hdc, TA_RIGHT | TA_TOP);
 		SetBkMode (hdc, TRANSPARENT);
 		cached_brush bkbrush;
 
-		for (int i = 0; i < idxEnd; ++i)
+		for (int i = first_line; i <= last_line; ++i)
 		{
-			int y = i * (char_height + 1);
+			int y = (i - si.nPos) * line_height;
 			ladder.describe (i, pd);
 			bkbrush.set_color (background_for_r (pd.risk_multiple));
 			RECT line_rect{ 0, y, line_width, y + char_height };
@@ -205,6 +225,66 @@ void paint_ladder (HWND hWnd)
 	EndPaint (hWnd, &ps);
 }
 
+// respond to scroll events
+static void scroll_ladder (HWND hWnd, int cmd)
+{
+	// Get all the vertical scroll bar information
+	SCROLLINFO si;
+	si.cbSize = sizeof (si);
+	si.fMask = SIF_ALL;
+	GetScrollInfo (hWnd, SB_VERT, &si);
+
+	// Save the position for comparison later on
+	int iVertPos = si.nPos;
+
+	switch (cmd)
+	{
+	case SB_TOP:
+		si.nPos = si.nMin;
+		break;
+
+	case SB_BOTTOM:
+		si.nPos = si.nMax;
+		break;
+
+	case SB_LINEUP:
+		si.nPos -= 1;
+		break;
+
+	case SB_LINEDOWN:
+		si.nPos += 1;
+		break;
+
+	case SB_PAGEUP:
+		si.nPos -= si.nPage;
+		break;
+
+	case SB_PAGEDOWN:
+		si.nPos += si.nPage;
+		break;
+
+	case SB_THUMBTRACK:
+		si.nPos = si.nTrackPos;
+		break;
+
+	default:
+		break;
+	}
+	// Set the position and then retrieve it.  Due to adjustments
+	//   by Windows it may not be the same as the value set.
+	si.fMask = SIF_POS;
+	SetScrollInfo (hWnd, SB_VERT, &si, TRUE);
+	GetScrollInfo (hWnd, SB_VERT, &si);
+
+	// If the position has changed, scroll the window and update it
+	if (si.nPos != iVertPos)
+	{
+		ScrollWindow (hWnd, 0, line_height * (iVertPos - si.nPos),
+					  NULL, NULL);
+		UpdateWindow (hWnd);
+	}
+}
+
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -215,7 +295,7 @@ void paint_ladder (HWND hWnd)
 //  WM_DESTROY  - post a quit message and return
 //
 //
-LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
@@ -246,8 +326,16 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		ReleaseDC (hWnd, hdc);
 	}
 	break;
+	case WM_SIZE:
+		// cxClient = LOWORD (lParam);
+		screen_height = HIWORD (lParam);
+		set_scrollinfo (hWnd);
+		break;
 	case WM_PAINT:
 		paint_ladder (hWnd);
+		break;
+	case WM_VSCROLL:
+		scroll_ladder (hWnd, LOWORD (wParam));
 		break;
 	case WM_DESTROY:
 		PostQuitMessage (0);
@@ -259,7 +347,7 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 // Message handler for about box.
-INT_PTR CALLBACK About (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+static INT_PTR CALLBACK About (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	UNREFERENCED_PARAMETER (lParam);
 	switch (message)

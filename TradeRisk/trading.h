@@ -30,6 +30,14 @@ struct price_description
 	double risk_multiple;
 };
 
+// this is a transaction at a price, which price_ladder will
+// track.
+struct transaction
+{
+	int step;
+	int amount;
+};
+
 // price_ladder remembers all the relevant information about
 // each price point.  step 0 == highest price, step n == starting price
 class price_ladder
@@ -39,6 +47,18 @@ private:
 	int nsteps;
 	double starting_price;
 	double risk_size;
+
+	// tracking the trade in play...
+	std::vector<transaction> transactions;
+
+	// these are derives stats from the transactions
+	int shares_bought;
+	int shares_sold;
+	double locked_in;
+	double avg_buy;
+	double avg_sell;
+
+	void calc_stats ();
 public:
 	price_ladder ();
 	void reset (const instrument &i, double start_at, int steps, double risk);

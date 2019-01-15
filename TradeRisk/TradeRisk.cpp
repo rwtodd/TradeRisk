@@ -16,6 +16,7 @@ static int avg_char_width;								// from metrics
 static int char_height;								// from metrics
 #define line_height (char_height + 1)
 static int screen_height;
+static int top_visible_index;   // the last time we painted, what was the topmost visible line
 
 // Forward declarations of functions included in this code module:
 static ATOM                MyRegisterClass (HINSTANCE hInstance);
@@ -169,6 +170,9 @@ static void set_scrollinfo (HWND hWnd)
 	SetScrollInfo (hWnd, SB_VERT, &si, TRUE);
 }
 
+// convert a client Y-position to a ladder index
+#define client_2_index(ypos)   (top_visible_index + (ypos) / line_height)
+
 static void paint_ladder (HWND hWnd)
 {
 	PAINTSTRUCT ps;
@@ -181,6 +185,7 @@ static void paint_ladder (HWND hWnd)
 	si.cbSize = sizeof (si);
 	si.fMask = SIF_POS;
 	GetScrollInfo (hWnd, SB_VERT, &si);
+	top_visible_index = si.nPos;
 
 	HDC hdc = BeginPaint (hWnd, &ps);
 	{
@@ -336,6 +341,14 @@ static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 		break;
 	case WM_VSCROLL:
 		scroll_ladder (hWnd, LOWORD (wParam));
+		break;
+	case WM_LBUTTONUP:
+		ladder.adjust (client_2_index (GET_Y_LPARAM (lParam)), 1);
+		InvalidateRect (hWnd, nullptr, true);
+		break;
+	case WM_RBUTTONUP:
+		ladder.adjust (client_2_index (GET_Y_LPARAM (lParam)), -1);
+		InvalidateRect (hWnd, nullptr, true);
 		break;
 	case WM_DESTROY:
 		PostQuitMessage (0);

@@ -51,9 +51,15 @@ void rwt::price_ladder::calc_stats ()
 	shares_bought = shares_sold = 0;
 	avg_buy = avg_sell = 0.0;
 	locked_in = 0.0;
+	min_step = nsteps + 1;
+	max_step = -1;
 
 	for (const auto &t : transactions)
 	{
+		// track the biggest/smallest step level we've seen
+		if (min_step > t.step) min_step = t.step;
+		if (max_step < t.step) max_step = t.step;
+
 		const double price = step_2_price (t.step);
 		if (t.amount >= 0)
 		{
@@ -87,9 +93,15 @@ void rwt::price_ladder::describe (int step, price_description &pd) const
 		pd.profit = locked_in + inst.value_of (-position, avg_sell - pd.price);
 	}
 
-	// TODO... maybe improve this by not doing the find if the step is out of range of the min/max transaction
-	auto trans = std::find_if (transactions.begin (), transactions.end (), [step](const auto &t) { return (t.step == step); });
-	pd.shares = (trans == transactions.end ()) ? 0 : trans->amount;
+	if( (step >= min_step) && (step <= max_step) ) 
+	{
+		auto trans = std::find_if (transactions.begin (), transactions.end (), [step](const auto &t) { return (t.step == step); });
+		pd.shares = (trans == transactions.end ()) ? 0 : trans->amount;
+	}
+	else
+	{
+		pd.shares = 0;
+	}
 
 	pd.risk_multiple = pd.profit / risk_size;
 }

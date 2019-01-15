@@ -57,6 +57,8 @@ private:
 	double locked_in;
 	double avg_buy;
 	double avg_sell;
+	int max_step;
+	int min_step;
 
 	void calc_stats ();
 public:

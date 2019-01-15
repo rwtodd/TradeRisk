@@ -23,6 +23,7 @@ static ATOM                MyRegisterClass (HINSTANCE hInstance);
 static BOOL                InitInstance (HINSTANCE, int);
 static LRESULT CALLBACK    WndProc (HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    About (HWND, UINT, WPARAM, LPARAM);
+static INT_PTR CALLBACK    SetRisk (HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain (_In_ HINSTANCE hInstance,
 					   _In_opt_ HINSTANCE hPrevInstance,
@@ -165,7 +166,7 @@ static void set_scrollinfo (HWND hWnd)
 	si.cbSize = sizeof (si);
 	si.fMask = SIF_RANGE | SIF_PAGE;
 	si.nMin = 0;
-	si.nMax = ladder.steps() - 1;
+	si.nMax = ladder.steps () - 1;
 	si.nPage = screen_height / line_height;
 	SetScrollInfo (hWnd, SB_VERT, &si, TRUE);
 }
@@ -317,6 +318,10 @@ static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 			ladder.clear_transactions ();
 			InvalidateRect (hWnd, nullptr, true);
 			break;
+		case ID_ACTIONS_RISK:
+			DialogBox (hInst, MAKEINTRESOURCE (IDD_RISKAMT_DLG), hWnd, SetRisk);
+			InvalidateRect (hWnd, nullptr, true);
+			break;
 		case IDM_EXIT:
 			DestroyWindow (hWnd);
 			break;
@@ -382,3 +387,39 @@ static INT_PTR CALLBACK About (HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 	}
 	return (INT_PTR)FALSE;
 }
+
+// Message handler for about box.
+static INT_PTR CALLBACK SetRisk (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER (lParam);
+	wchar_t buff[20];
+
+	switch (message)
+	{
+	case WM_INITDIALOG:
+	{
+		swprintf (buff, 20, L"%.2lf", ladder.risk ());
+		SetDlgItemText (hDlg, IDC_EDIT_RISKAMT, buff);
+		return (INT_PTR)TRUE;
+	}
+	case WM_COMMAND:
+	{
+		auto cmd = LOWORD (wParam);
+		if (cmd == IDOK)
+		{
+			double newr = -1;
+			GetDlgItemText (hDlg, IDC_EDIT_RISKAMT, buff, 20);
+			swscanf_s (buff, L"%lf", &newr);
+			if (newr > 0) ladder.set_risk (newr);
+		}
+		if ((cmd == IDOK) || (cmd == IDCANCEL))
+		{
+			EndDialog (hDlg, LOWORD (wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
+	}
+	}
+	return (INT_PTR)FALSE;
+}
+

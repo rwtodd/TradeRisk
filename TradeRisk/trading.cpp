@@ -31,7 +31,7 @@ double rwt::instrument::round_to_tick (double value) const
 
 rwt::price_ladder::price_ladder () : inst(0.25, 12.5)
 {
-	reset (instrument{ 0.25, 12.5 }, 2500.00, 200, 25.00);
+	reset (instrument{ 0.25, 12.5 }, 2500.00, 200, 100.00);
 }
 
 void rwt::price_ladder::reset (const instrument & i, double start_at, int steps, double risk)
@@ -40,6 +40,11 @@ void rwt::price_ladder::reset (const instrument & i, double start_at, int steps,
 	risk_size = risk;
 	nsteps = steps;
 	starting_price = inst.round_to_tick (start_at);
+	clear_transactions ();
+}
+
+void rwt::price_ladder::clear_transactions ()
+{
 	transactions.clear ();
 	calc_stats ();
 }

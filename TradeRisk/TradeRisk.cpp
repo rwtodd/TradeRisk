@@ -313,6 +313,10 @@ static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 		case IDM_ABOUT:
 			DialogBox (hInst, MAKEINTRESOURCE (IDD_ABOUTBOX), hWnd, About);
 			break;
+		case ID_ACTIONS_CLEAR:
+			ladder.clear_transactions ();
+			InvalidateRect (hWnd, nullptr, true);
+			break;
 		case IDM_EXIT:
 			DestroyWindow (hWnd);
 			break;

@@ -64,6 +64,7 @@ private:
 public:
 	price_ladder ();
 	void reset (const instrument &i, double start_at, int steps, double risk);
+	void clear_transactions ();
 	inline int steps () const { return nsteps; }
 	void describe (int step, price_description &pd) const;
 	void adjust (int step, int amt);

@@ -8,9 +8,20 @@ rwt::instrument::instrument (double tsz, double tv)
 {
 }
 
-
 rwt::instrument::~instrument ()
 {
+}
+
+int rwt::instrument::significant_digits () const
+{
+	int tmpDigits = 0;
+	double tmp = tick_size;
+	while (tmp - int (tmp) > 0.000001)
+	{
+		tmp = tmp * 10;
+		tmpDigits = tmpDigits + 1;
+	}
+	return tmpDigits;
 }
 
 double rwt::instrument::ticks_from (double start, int ticks) const
@@ -40,8 +51,15 @@ void rwt::price_ladder::reset (const instrument & i, double start_at, int steps)
 	inst = i;
 	nsteps = steps;
 	starting_price = inst.round_to_tick (start_at);
-	clear_transactions ();
+	clear_transactions ();	
+	swprintf_s (price_fmt_string, 7, L"%%.%dlf", inst.significant_digits ());
 }
+
+int rwt::price_ladder::format_price (wchar_t *const buff, size_t buffsz, double price) const
+{
+	return swprintf_s (buff, buffsz, price_fmt_string, price);
+}
+
 
 void rwt::price_ladder::clear_transactions ()
 {

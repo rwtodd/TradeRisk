@@ -18,6 +18,7 @@ public:
 	double ticks_from (double start, int ticks) const;
 	double value_of (int shares, double diff) const;
 	double round_to_tick (double value) const;
+	int significant_digits () const;
 };
 
 // this is the description that price_ladder can
@@ -47,6 +48,7 @@ private:
 	int nsteps;
 	double starting_price;
 	double risk_size;
+	wchar_t price_fmt_string[7]; // "%.99lf"
 
 	// tracking the trade in play...
 	std::vector<transaction> transactions;
@@ -69,6 +71,7 @@ public:
 	void clear_transactions ();
 	inline int steps () const { return nsteps; }
 	void describe (int step, price_description &pd) const;
+	int format_price (wchar_t *const buff, size_t buffsz, double price) const;
 	void adjust (int step, int amt);
 };
 

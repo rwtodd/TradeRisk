@@ -212,11 +212,11 @@ static void paint_ladder (HWND hWnd)
 			if (pd.shares != 0)
 			{
 				bufflen = swprintf (buffer, 20, L"%d", pd.shares);
-				TextOut (hdc, 5 * avg_char_width, y, buffer, bufflen);
+				TextOut (hdc, 6 * avg_char_width, y, buffer, bufflen);
 			}
 
 			// print the price level...
-			bufflen = swprintf (buffer, 20, L"%5.2f", pd.price);
+			bufflen = ladder.format_price (buffer, 20, pd.price);
 			TextOut (hdc, 15 * avg_char_width, y, buffer, bufflen);
 
 			// print the PnL

@@ -351,6 +351,11 @@ static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 		avg_char_width = tm.tmAveCharWidth;
 		char_height = tm.tmExternalLeading + tm.tmHeight;
 		ReleaseDC (hWnd, hdc);
+
+		// Determine a decent width for the window... just guess...
+		RECT winrect;
+		GetWindowRect (hWnd, &winrect);
+		MoveWindow (hWnd, winrect.left, winrect.top, 40 * avg_char_width, winrect.bottom - winrect.top, true);
 	}
 	break;
 	case WM_SIZE:

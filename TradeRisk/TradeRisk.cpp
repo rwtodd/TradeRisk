@@ -307,6 +307,8 @@ static void scroll_ladder (HWND hWnd, int cmd)
 static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	INT_PTR result;
+	static int trade_size = 1;
+
 	switch (message)
 	{
 	case WM_COMMAND:
@@ -370,12 +372,26 @@ static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 		scroll_ladder (hWnd, LOWORD (wParam));
 		break;
 	case WM_LBUTTONUP:
-		ladder.adjust (client_2_index (GET_Y_LPARAM (lParam)), 1);
+		ladder.adjust (client_2_index (GET_Y_LPARAM (lParam)), trade_size);
 		InvalidateRect (hWnd, nullptr, true);
 		break;
 	case WM_RBUTTONUP:
-		ladder.adjust (client_2_index (GET_Y_LPARAM (lParam)), -1);
+		ladder.adjust (client_2_index (GET_Y_LPARAM (lParam)), -trade_size);
 		InvalidateRect (hWnd, nullptr, true);
+		break;
+	case WM_KEYUP:
+		if (wParam == 0x30)
+		{
+			trade_size = 10;
+		}
+		else if ((wParam >= 0x31) && (wParam <= 0x39))
+		{
+			trade_size = wParam - 0x30;
+		}
+		else
+		{
+			return DefWindowProc (hWnd, message, wParam, lParam);
+		}
 		break;
 	case WM_DESTROY:
 		PostQuitMessage (0);

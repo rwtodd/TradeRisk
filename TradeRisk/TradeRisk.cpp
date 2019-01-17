@@ -24,6 +24,7 @@ static BOOL                InitInstance (HINSTANCE, int);
 static LRESULT CALLBACK    WndProc (HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    About (HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    SetRisk (HWND, UINT, WPARAM, LPARAM);
+static INT_PTR CALLBACK    InstrumentSettings (HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain (_In_ HINSTANCE hInstance,
 					   _In_opt_ HINSTANCE hPrevInstance,
@@ -158,17 +159,19 @@ public:
 	HBRUSH operator*() { return brush; }
 };
 
-// resets the scrollbar info when the window size or the
+// resets the scrollbar info when the
 // number of lines changes...
 static void set_scrollinfo (HWND hWnd)
 {
 	SCROLLINFO si;
 	si.cbSize = sizeof (si);
-	si.fMask = SIF_RANGE | SIF_PAGE;
+	si.nPos = 0;
+	si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
 	si.nMin = 0;
 	si.nMax = ladder.steps () - 1;
 	si.nPage = screen_height / line_height;
 	SetScrollInfo (hWnd, SB_VERT, &si, TRUE);
+	top_visible_index = 0;
 }
 
 // convert a client Y-position to a ladder index
@@ -208,7 +211,7 @@ static void paint_ladder (HWND hWnd)
 			// print the size, if there is one...
 			if (pd.shares != 0)
 			{
-				bufflen = swprintf (buffer, 20, L"%2d", pd.shares);
+				bufflen = swprintf (buffer, 20, L"%d", pd.shares);
 				TextOut (hdc, 5 * avg_char_width, y, buffer, bufflen);
 			}
 
@@ -303,6 +306,7 @@ static void scroll_ladder (HWND hWnd, int cmd)
 //
 static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	INT_PTR result;
 	switch (message)
 	{
 	case WM_COMMAND:
@@ -318,9 +322,18 @@ static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 			ladder.clear_transactions ();
 			InvalidateRect (hWnd, nullptr, true);
 			break;
+		case ID_ACTIONS_INSTRUMENT:
+			result = DialogBox (hInst, MAKEINTRESOURCE (IDD_INSTR_DLG), hWnd, InstrumentSettings);
+			if (result == IDOK)
+			{
+				set_scrollinfo (hWnd);
+				InvalidateRect (hWnd, nullptr, true);
+			}
+			break;
 		case ID_ACTIONS_RISK:
-			DialogBox (hInst, MAKEINTRESOURCE (IDD_RISKAMT_DLG), hWnd, SetRisk);
-			InvalidateRect (hWnd, nullptr, true);
+			result = DialogBox (hInst, MAKEINTRESOURCE (IDD_RISKAMT_DLG), hWnd, SetRisk);
+			if (result == IDOK) 
+				InvalidateRect (hWnd, nullptr, true);
 			break;
 		case IDM_EXIT:
 			DestroyWindow (hWnd);
@@ -388,7 +401,7 @@ static INT_PTR CALLBACK About (HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 	return (INT_PTR)FALSE;
 }
 
-// Message handler for about box.
+// Message handler for risk setting box.
 static INT_PTR CALLBACK SetRisk (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	UNREFERENCED_PARAMETER (lParam);
@@ -423,3 +436,72 @@ static INT_PTR CALLBACK SetRisk (HWND hDlg, UINT message, WPARAM wParam, LPARAM 
 	return (INT_PTR)FALSE;
 }
 
+// Message handler for instrument settings box.
+static INT_PTR CALLBACK InstrumentSettings (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER (lParam);
+	wchar_t buff[20];
+
+	switch (message)
+	{
+	case WM_INITDIALOG:
+	{
+		swprintf (buff, 20, L"%d", ladder.steps ());
+		SetDlgItemText (hDlg, IDC_NUMROWS, buff);
+		CheckDlgButton (hDlg, IDC_INST_ES, BST_CHECKED);
+		return (INT_PTR)TRUE;
+	}
+	case WM_COMMAND:
+	{
+		auto cmd = LOWORD (wParam);
+		if (cmd == IDOK)
+		{
+			double new_start = -1;
+			int new_rows = -1;
+			double itick_size = 0.25;
+			double itick_value = 12.5;
+
+			// get the starting price
+			GetDlgItemText (hDlg, IDC_STARTPRICE, buff, 20);
+			swscanf_s (buff, L"%lf", &new_start);
+			if (new_start <= 0) return (INT_PTR)FALSE;
+
+			// get the number of rows
+			GetDlgItemText (hDlg, IDC_NUMROWS, buff, 20);
+			swscanf_s (buff, L"%d", &new_rows);
+			if (new_rows <= 0) return (INT_PTR)FALSE;
+
+			// get the instrument
+			if (IsDlgButtonChecked (hDlg, IDC_INST_ES) == BST_CHECKED)
+			{
+				itick_size = 0.25;
+				itick_value = 12.5;
+			}
+			else if (IsDlgButtonChecked (hDlg, IDC_INST_6E) == BST_CHECKED)
+			{
+				itick_size = 0.00005;
+				itick_value = 6.25;
+			}
+			else if (IsDlgButtonChecked (hDlg, IDC_INST_CL) == BST_CHECKED)
+			{
+				itick_size = 0.01;
+				itick_value = 10.0;
+			}
+			else if (IsDlgButtonChecked (hDlg, IDC_INST_STOCK) == BST_CHECKED)
+			{
+				itick_size = 0.01;
+				itick_value = 0.01;
+			}
+
+			ladder.reset (rwt::instrument{ itick_size, itick_value }, new_start, new_rows);
+		}
+		if ((cmd == IDOK) || (cmd == IDCANCEL))
+		{
+			EndDialog (hDlg, cmd);
+			return (INT_PTR)TRUE;
+		}
+		break;
+	}
+	}
+	return (INT_PTR)FALSE;
+}

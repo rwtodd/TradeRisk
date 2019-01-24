@@ -9,7 +9,6 @@
 #define IDM_ABOUT                       104
 #define IDM_EXIT                        105
 #define IDI_TRADERISK                   107
-#define IDI_SMALL                       108
 #define IDC_TRADERISK                   109
 #define IDR_MAINFRAME                   128
 #define IDD_RISKAMT_DLG                 129
@@ -18,7 +17,6 @@
 #define IDC_INST_ES                     1001
 #define IDC_INST_6E                     1002
 #define IDC_INST_CL                     1003
-#define IDC_RADIO4                      1004
 #define IDC_INST_STOCK                  1004
 #define IDC_STARTPRICE                  1005
 #define IDC_NUMROWS                     1006

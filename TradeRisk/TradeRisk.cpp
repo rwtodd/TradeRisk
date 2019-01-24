@@ -235,7 +235,7 @@ static void paint_ladder (HWND hWnd)
 }
 
 // respond to scroll events
-static void scroll_ladder (HWND hWnd, int cmd)
+static void scroll_ladder (HWND hWnd, int cmd, int multiplier = 1)
 {
 	// Get all the vertical scroll bar information
 	SCROLLINFO si;
@@ -257,11 +257,11 @@ static void scroll_ladder (HWND hWnd, int cmd)
 		break;
 
 	case SB_LINEUP:
-		si.nPos -= 1;
+		si.nPos -= multiplier;
 		break;
 
 	case SB_LINEDOWN:
-		si.nPos += 1;
+		si.nPos += multiplier;
 		break;
 
 	case SB_PAGEUP:
@@ -371,6 +371,15 @@ static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 	case WM_VSCROLL:
 		scroll_ladder (hWnd, LOWORD (wParam));
 		break;
+	case WM_MOUSEWHEEL:
+	{
+		int zDelta = GET_WHEEL_DELTA_WPARAM (wParam) / WHEEL_DELTA;
+		if (zDelta >= 0)
+			scroll_ladder (hWnd, SB_LINEUP, zDelta);
+		else
+			scroll_ladder (hWnd, SB_LINEDOWN, -zDelta);
+	}
+	break;
 	case WM_LBUTTONUP:
 		ladder.adjust (client_2_index (GET_Y_LPARAM (lParam)), trade_size);
 		InvalidateRect (hWnd, nullptr, true);

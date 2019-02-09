@@ -15,10 +15,20 @@ public:
 	instrument (double tsz, double tv);
 	~instrument ();
 
+	// return the price TICKS ticks from START
 	double ticks_from (double start, int ticks) const;
+
+	// return the money-value of DIFF ticks for SHARES shares
 	double value_of (int shares, double diff) const;
+
+	// round a price to a tick
 	double round_to_tick (double value) const;
+
+	// determine the number of significant digits in reporting for these ticks
 	int significant_digits () const;
+
+	// determine how many ticks apart two prices are
+	int ticks_apart (double p1, double p2) const;
 };
 
 // this is the description that price_ladder can
@@ -65,8 +75,10 @@ private:
 	void calc_stats ();
 public:
 	price_ladder ();
-	void reset (const instrument &i, double start_at, int steps);
+	void reset (const instrument &i, double center_price, int steps);
+	void recenter (double center_price);
 	double risk () const;
+	double center () const;
 	void set_risk (double r);
 	void clear_transactions ();
 	inline int steps () const { return nsteps; }

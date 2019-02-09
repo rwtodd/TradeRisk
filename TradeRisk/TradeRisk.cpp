@@ -24,6 +24,7 @@ static BOOL                InitInstance (HINSTANCE, int);
 static LRESULT CALLBACK    WndProc (HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    About (HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    SetRisk (HWND, UINT, WPARAM, LPARAM);
+static INT_PTR CALLBACK    SetCenter (HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    InstrumentSettings (HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain (_In_ HINSTANCE hInstance,
@@ -165,13 +166,13 @@ static void set_scrollinfo (HWND hWnd)
 {
 	SCROLLINFO si;
 	si.cbSize = sizeof (si);
-	si.nPos = 0;
 	si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
 	si.nMin = 0;
 	si.nMax = ladder.steps () - 1;
 	si.nPage = screen_height / line_height;
+	si.nPos = (ladder.steps () - si.nPage)/ 2;
 	SetScrollInfo (hWnd, SB_VERT, &si, TRUE);
-	top_visible_index = 0;
+	top_visible_index = si.nPos;
 }
 
 // convert a client Y-position to a ladder index
@@ -337,6 +338,14 @@ static LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 			if (result == IDOK) 
 				InvalidateRect (hWnd, nullptr, true);
 			break;
+		case ID_ACTIONS_CENTER:
+			result = DialogBox (hInst, MAKEINTRESOURCE (IDD_CENTERP_DLG), hWnd, SetCenter);
+			if (result == IDOK)
+			{
+				set_scrollinfo (hWnd);
+				InvalidateRect (hWnd, nullptr, true);
+			}
+			break;
 		case IDM_EXIT:
 			DestroyWindow (hWnd);
 			break;
@@ -466,6 +475,41 @@ static INT_PTR CALLBACK SetRisk (HWND hDlg, UINT message, WPARAM wParam, LPARAM 
 	return (INT_PTR)FALSE;
 }
 
+// Message handler for center setting box.
+static INT_PTR CALLBACK SetCenter (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER (lParam);
+	wchar_t buff[20];
+
+	switch (message)
+	{
+	case WM_INITDIALOG:
+	{
+		ladder.format_price (buff, 20, ladder.center ());
+		SetDlgItemText (hDlg, IDC_EDIT_CENTERP, buff);
+		return (INT_PTR)TRUE;
+	}
+	case WM_COMMAND:
+	{
+		auto cmd = LOWORD (wParam);
+		if (cmd == IDOK)
+		{
+			double newc = -1;
+			GetDlgItemText (hDlg, IDC_EDIT_CENTERP, buff, 20);
+			swscanf_s (buff, L"%lf", &newc);
+			if (newc > 0) ladder.recenter (newc);
+		}
+		if ((cmd == IDOK) || (cmd == IDCANCEL))
+		{
+			EndDialog (hDlg, LOWORD (wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
+	}
+	}
+	return (INT_PTR)FALSE;
+}
+
 // Message handler for instrument settings box.
 static INT_PTR CALLBACK InstrumentSettings (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -486,15 +530,15 @@ static INT_PTR CALLBACK InstrumentSettings (HWND hDlg, UINT message, WPARAM wPar
 		auto cmd = LOWORD (wParam);
 		if (cmd == IDOK)
 		{
-			double new_start = -1;
+			double new_center = -1;
 			int new_rows = -1;
 			double itick_size = 0.25;
 			double itick_value = 12.5;
 
 			// get the starting price
-			GetDlgItemText (hDlg, IDC_STARTPRICE, buff, 20);
-			swscanf_s (buff, L"%lf", &new_start);
-			if (new_start <= 0) return (INT_PTR)FALSE;
+			GetDlgItemText (hDlg, IDC_CENTERP, buff, 20);
+			swscanf_s (buff, L"%lf", &new_center);
+			if (new_center <= 0) return (INT_PTR)FALSE;
 
 			// get the number of rows
 			GetDlgItemText (hDlg, IDC_NUMROWS, buff, 20);
@@ -523,7 +567,7 @@ static INT_PTR CALLBACK InstrumentSettings (HWND hDlg, UINT message, WPARAM wPar
 				itick_value = 0.01;
 			}
 
-			ladder.reset (rwt::instrument{ itick_size, itick_value }, new_start, new_rows);
+			ladder.reset (rwt::instrument{ itick_size, itick_value }, new_center, new_rows);
 		}
 		if ((cmd == IDOK) || (cmd == IDCANCEL))
 		{

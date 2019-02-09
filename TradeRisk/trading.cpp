@@ -37,7 +37,12 @@ rwt::instrument::value_of (int shares, double diff) const
 
 double rwt::instrument::round_to_tick (double value) const
 {
-	return floor (value / tick_size) * tick_size;
+	return floor (value / tick_size + 0.5) * tick_size;
+}
+
+int rwt::instrument::ticks_apart (double p1, double p2) const
+{
+	return static_cast<int>(floor((p1 - p2) / tick_size + 0.5));
 }
 
 rwt::price_ladder::price_ladder () : inst(0.25, 12.5)
@@ -46,12 +51,30 @@ rwt::price_ladder::price_ladder () : inst(0.25, 12.5)
 	set_risk (100.0);
 }
 
-void rwt::price_ladder::reset (const instrument & i, double start_at, int steps)
+void rwt::price_ladder::recenter (double center_price)
 {
+	double old_sp = starting_price;
+	starting_price = inst.round_to_tick (inst.ticks_from (center_price, -nsteps / 2));
+	if (!transactions.empty ())
+	{
+		auto ticks_apart = inst.ticks_apart (starting_price, old_sp);
+		std::for_each (transactions.begin (), transactions.end (), [=](rwt::transaction &t) { t.step += ticks_apart; });
+		min_step += ticks_apart;
+		max_step += ticks_apart;
+	}
+}
+
+double rwt::price_ladder::center () const
+{
+	return inst.ticks_from (starting_price, nsteps / 2);
+}
+
+void rwt::price_ladder::reset (const instrument & i, double center_price, int steps)
+{
+	clear_transactions ();
 	inst = i;
 	nsteps = steps;
-	starting_price = inst.round_to_tick (start_at);
-	clear_transactions ();	
+	recenter (center_price);
 	swprintf_s (price_fmt_string, 7, L"%%.%dlf", inst.significant_digits ());
 }
 

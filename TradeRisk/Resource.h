@@ -13,16 +13,19 @@
 #define IDR_MAINFRAME                   128
 #define IDD_RISKAMT_DLG                 129
 #define IDD_INSTR_DLG                   130
-#define IDC_EDIT_RISKAMT                1000
+#define IDD_CENTERP_DLG                 131
 #define IDC_INST_ES                     1001
 #define IDC_INST_6E                     1002
 #define IDC_INST_CL                     1003
 #define IDC_INST_STOCK                  1004
-#define IDC_STARTPRICE                  1005
+#define IDC_CENTERP                     1005
 #define IDC_NUMROWS                     1006
+#define IDC_EDIT_RISKAMT                1007
+#define IDC_EDIT_CENTERP                1008
 #define ID_ACTIONS_CLEAR                32771
 #define ID_ACTIONS_RISK                 32772
 #define ID_ACTIONS_INSTRUMENT           32773
+#define ID_ACTIONS_CENTER               32774
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -31,8 +34,8 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        131
-#define _APS_NEXT_COMMAND_VALUE         32774
-#define _APS_NEXT_CONTROL_VALUE         1006
+#define _APS_NEXT_COMMAND_VALUE         32777
+#define _APS_NEXT_CONTROL_VALUE         1009
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

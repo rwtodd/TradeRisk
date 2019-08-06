@@ -4,9 +4,12 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
 import javax.swing.*;
+import javax.swing.border.BevelBorder;
 
 class PriceLadderCellRenderer extends JLabel implements ListCellRenderer<PricePoint> {
-   private final String rowFmt; // printf format for price
+   private final String blankFmt; // printf format for price
+   private final String tradeFmt; // printf format for price
+
    private final static Color[] riskColors =  // different shades of pnl
      { 
        new Color(128,64,50),
@@ -21,10 +24,12 @@ class PriceLadderCellRenderer extends JLabel implements ListCellRenderer<PricePo
 
    PriceLadderCellRenderer(Instrument inst) {
       super();
-      rowFmt = String.format("%% 4d  %%.%df  %%5.2f  %%5.1f", 
-                               inst.significantDigits());
-      setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
+      final int sigdig = inst.significantDigits();
+      blankFmt = String.format("      %% 10.%df  %% 10.2f  %% 5.1f", sigdig);
+      tradeFmt = String.format("%% 4d  %% 10.%df  %% 10.2f  %% 5.1f", sigdig);
+      setFont(new Font(Font.MONOSPACED, Font.BOLD, 14));
       setOpaque(true); // so that the background is drawn
+      setBorder(BorderFactory.createBevelBorder(BevelBorder.RAISED));
    }
 
    @Override
@@ -34,29 +39,26 @@ class PriceLadderCellRenderer extends JLabel implements ListCellRenderer<PricePo
       int index,
       boolean isSelected,
       boolean cellHasFocus) {
-       final String repr = String.format(rowFmt, value.shares, 
+       final String repr = (value.shares == 0) ? 
+                              String.format(blankFmt, value.price, 
+                                                 value.pnl,
+                                                 value.riskMultiple) :
+                              String.format(tradeFmt, value.shares, 
                                                  value.price, 
                                                  value.pnl,
                                                  value.riskMultiple);
        setText(repr);
 
        int idx = 7;
-       if(value.riskMultiple < -1.0) {
-           idx = 0;
-       } else if(value.riskMultiple < 0) {
-           idx = 1;
-       } else if(value.riskMultiple < 0.5) {
-           idx = 2;
-       } else if(value.riskMultiple < 2) {
-           idx = 3;
-       } else if(value.riskMultiple < 4) {
-           idx = 4;
-       } else if(value.riskMultiple < 6) {
-           idx = 5;
-       } else if(value.riskMultiple < 8) {
-           idx = 6;
-       }
+       if(value.riskMultiple < -1.0) { idx = 0; }
+       else if(value.riskMultiple < 0) { idx = 1; }
+       else if(value.riskMultiple < 0.5) { idx = 2; }
+       else if(value.riskMultiple < 2) { idx = 3; }
+       else if(value.riskMultiple < 4) { idx = 4; }
+       else if(value.riskMultiple < 6) { idx = 5; }
+       else if(value.riskMultiple < 8) { idx = 6; }
        setBackground(PriceLadderCellRenderer.riskColors[idx]);
+
        return this;
    }
 }

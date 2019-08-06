@@ -20,9 +20,9 @@ public class Cmd extends JFrame {
      lst.setModel(model);
 
      final var proto = new PricePoint();
-     proto.shares = -99999;
-     proto.pnl = -222009;
-     proto.price = 11122009.25;
+     proto.shares = 999999999;
+     proto.pnl =    999999999;
+     proto.price =  11122009.25;
      proto.riskMultiple = 11122009.25;
      lst.setPrototypeCellValue(proto);
   }

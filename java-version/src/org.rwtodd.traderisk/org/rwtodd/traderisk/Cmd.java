@@ -11,14 +11,16 @@ class PricePoint {
   public double price;
   public int shares;
   public double pnl;
-  public String toString() { 
-    return String.format("% 4d   %7.2f   %7.2f",shares, price, pnl);
-  }
+  public double riskMultiple;
 }
 
 class PriceLadderCellRenderer extends JLabel implements ListCellRenderer<PricePoint> {
-   PriceLadderCellRenderer() {
+   private final String rowFmt; // printf format for price
+
+   PriceLadderCellRenderer(Instrument inst) {
       super();
+      rowFmt = String.format("%% 4d  %%.%df  %%5.2f %%5.1f", 
+                               inst.significantDigits());
       setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
       setOpaque(true); // so that the background is drawn
    }
@@ -28,42 +30,18 @@ class PriceLadderCellRenderer extends JLabel implements ListCellRenderer<PricePo
       int index,
       boolean isSelected,
       boolean cellHasFocus) {
-       setText(value.toString());
-       if(index < 50) {
+       final String repr = String.format(rowFmt, value.shares, 
+                                                 value.price, 
+                                                 value.pnl,
+                                                 value.riskMultiple);
+       setText(repr);
+       if(value.riskMultiple < 0) {
           setBackground(java.awt.Color.RED);
        } else {
           setBackground(java.awt.Color.GREEN);
        }
        return this;
    }
-}
-
-class VirtualListModel implements ListModel<PricePoint> {
-
-  private final double highPrice;
-  private final int size;
-  private final double tick;
-  PricePoint result;
-
-  VirtualListModel(double center, int rows, double unit) {
-      highPrice = center + (rows/2)*unit; 
-      tick = unit;
-      size = rows;
-      result = new PricePoint();
-  }
-
-  public void addListDataListener(ListDataListener l) { }
-  public void removeListDataListener(ListDataListener l) { } 
-
-  public PricePoint getElementAt(int index) {
-      result.price = highPrice - index*tick; 
-      result.shares = 0;
-      result.pnl = 0;
-      //System.out.printf("data request for %d\n", index);
-      return result;
-  }
-
-  public int getSize() { return size; }
 }
 
 
@@ -75,16 +53,13 @@ class ClickListener implements MouseListener {
   } 
 
   public void	mouseClicked(MouseEvent e)	 {
-      int index = parent.locationToIndex(e.getPoint());
-      double price = parent.getModel().getElementAt(index).price;
-
+      final int index = parent.locationToIndex(e.getPoint());
+      final var pl = (PriceLadder)parent.getModel();
       if(SwingUtilities.isLeftMouseButton(e)) {
-         System.out.printf("LEFT on %7.2f\n", price);
+          pl.adjustTransaction(index, 1); 
       } else if(SwingUtilities.isRightMouseButton(e)) {
-         System.out.printf("RIGHT on %7.2f\n", price);
-      } else {
-         System.out.printf("Some other button %d!\n", e.getButton());
-      }
+          pl.adjustTransaction(index, -1);
+      } 
   }
 
   public void	mouseEntered(MouseEvent e)	{  }
@@ -97,8 +72,8 @@ public class Cmd extends JFrame {
   public Cmd() {
     super("Virtual List Example");
     setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    var lst = new JList<PricePoint>(new VirtualListModel(2500.00, 200, 0.25));
-    lst.setCellRenderer(new PriceLadderCellRenderer());
+    var lst = new JList<PricePoint>(new PriceLadder(Instrument.ES, 200, 2500.0, 100.0));
+    lst.setCellRenderer(new PriceLadderCellRenderer(Instrument.ES));
     lst.setVisibleRowCount(25);    
     lst.addMouseListener(new ClickListener(lst)); 
 
@@ -106,6 +81,7 @@ public class Cmd extends JFrame {
     proto.shares = -99999;
     proto.pnl = -222009;
     proto.price = 11122009.25;
+    proto.riskMultiple = 11122009.25;
     lst.setPrototypeCellValue(proto);
     setContentPane(new JScrollPane(lst));
     pack();

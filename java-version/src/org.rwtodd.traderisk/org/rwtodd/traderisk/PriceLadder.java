@@ -44,12 +44,19 @@ class PriceLadder extends AbstractListModel<PricePoint> {
       nsteps = steps;
       riskSize = risk;
       generated = new PricePoint();
-      transactions = new ArrayList<>();
-      calcStats();
 
+      clearTransactions();
       recenter(center);
   }
   
+  /** throws away any existing transactions and resets. */
+  void clearTransactions() {
+      boolean updateUI = (transactions != null) && (!transactions.isEmpty());
+      transactions = new ArrayList<>();
+      calcStats();
+      if(updateUI) fireContentsChanged(this, 0, nsteps - 1);
+  } 
+
   /** Recalculate our derived statistics about open transacitons. */
   private void calcStats() {
 	sharesBought = 0;
@@ -84,6 +91,13 @@ class PriceLadder extends AbstractListModel<PricePoint> {
 	
 	final int lockAmt = Math.min(sharesSold, sharesBought);
 	lockedIn = inst.valueOf (lockAmt, avgSell - avgBuy);
+  }
+
+  /** Gets the current center price.
+    * @return the center price.
+    */
+  double getCenter() {
+    return inst.ticksFrom(highPrice, -nsteps/2);
   }
 
   /** Adjust the center of the price scale.  Take care to adjust
@@ -139,6 +153,9 @@ class PriceLadder extends AbstractListModel<PricePoint> {
       return generated;
   }
 
+  /** returns the number of price ladder steps.
+   * @return the size of the ladder in steps.
+   */
   public int getSize() { return nsteps; }
 
   void adjustTransaction(int step, int amount) {
@@ -158,7 +175,26 @@ class PriceLadder extends AbstractListModel<PricePoint> {
      fireContentsChanged(this, 0, nsteps - 1);
   }
 
+  /** gets the currently-set risk amount.
+   * @return the risk amount.
+   */
   double getRisk() { return riskSize; }
-  void setRisk(double nrisk) { riskSize = nrisk; }
+
+  /** updates the risk amount for the trade.
+   *  Values less than $1 are silently raised to $1.
+   *  If a transaction is in progress then the UI will
+   *  be updated.
+   *
+   * @param nrisk the new risk
+   */
+  void setRisk(double nrisk) { 
+     riskSize = Math.max(1.0, nrisk);  // can't risk less than a dollar
+     if(!transactions.isEmpty()) fireContentsChanged(this, 0, nsteps - 1);
+  }
+
+  /** gets the instrument for this price ladder.
+   * @return the instrument
+   */
+  Instrument getInstrument() { return inst; }
 }
 

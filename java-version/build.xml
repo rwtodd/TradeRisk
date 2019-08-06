@@ -18,9 +18,9 @@
     <target name="build" depends="" description="compile the classes">
         <mkdir dir="${dest.dir}"/>
     	<javac modulesourcepath="${src.dir}" release="12" destdir="${dest.dir}" />
-<!--        <copy file="${src.dir}/org.rwtodd.traderisk/icon.gif"
+        <copy file="${src.dir}/org.rwtodd.traderisk/icon.gif"
               todir="${dest.dir}/org.rwtodd.traderisk/" />
-        <copy file="${src.dir}/org.rwtodd.traderisk/HelpText.html"
+<!--        <copy file="${src.dir}/org.rwtodd.traderisk/HelpText.html"
               todir="${dest.dir}/org.rwtodd.traderisk/" /> -->
     </target>
 

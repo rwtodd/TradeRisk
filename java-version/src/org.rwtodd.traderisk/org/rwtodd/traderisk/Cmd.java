@@ -118,6 +118,6 @@ public class Cmd extends JFrame {
   }
 
   public static void main(String[] args) {
-    new Cmd();
+     SwingUtilities.invokeLater(Cmd::new);
   }
 }

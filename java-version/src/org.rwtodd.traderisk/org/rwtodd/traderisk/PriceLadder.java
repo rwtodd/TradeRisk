@@ -66,7 +66,7 @@ class PriceLadder extends AbstractListModel<PricePoint> {
 		if (minStep > t.step) minStep = t.step;
 		if (maxStep < t.step) maxStep = t.step;
 
-		final double price = inst.ticksFrom(highPrice, t.step);
+		final double price = inst.ticksFrom(highPrice, -t.step);
 		if (t.amount >= 0)
 		{
 			sharesBought += t.amount;
@@ -103,6 +103,7 @@ class PriceLadder extends AbstractListModel<PricePoint> {
          minStep += ticksApart;
          maxStep += ticksApart;
       }
+      fireContentsChanged(this, 0, nsteps - 1);
   }
 
   /** locate a transaction by the step it sits in.
@@ -119,7 +120,7 @@ class PriceLadder extends AbstractListModel<PricePoint> {
 
   @Override
   public PricePoint getElementAt(int index) {
-      generated.price = inst.ticksFrom(highPrice, index);
+      generated.price = inst.ticksFrom(highPrice, -index);
       final int position = sharesBought - sharesSold;
       if(position >= 0) {
          generated.pnl =  lockedIn + inst.valueOf(position, generated.price - avgBuy);
@@ -154,6 +155,7 @@ class PriceLadder extends AbstractListModel<PricePoint> {
         transactions.add(transaction);
      }
      calcStats();
+     fireContentsChanged(this, 0, nsteps - 1);
   }
 
   double getRisk() { return riskSize; }

@@ -34,10 +34,12 @@ public class Cmd extends JFrame {
     changeInstrument(Instrument.ES, 200, 2500.0, 100.0);
 
     lst.setVisibleRowCount(25);    
-    lst.addMouseListener(new ClickListener(lst)); 
+    final var click = new ClickListener(lst);
+    lst.addMouseListener(click); 
     setContentPane(new JScrollPane(lst));
 
     pack();
+    click.scrollHalfway();
     setVisible(true);
   }
 
